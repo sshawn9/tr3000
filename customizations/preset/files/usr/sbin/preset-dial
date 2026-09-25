@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -e
+
+uci -q set network.dial=interface
+uci -q set network.dial.proto='pppoe'
+uci -q set network.dial.device='eth0'
+uci -q set network.dial.ipv6='auto'
+uci -q set network.dial.norelease='1'
+uci -q set network.dial.auto='0'
+uci -q set network.dial.disabled='1'
+
+uci -q del_list network.dial.dns='223.5.5.5' || :
+uci -q add_list network.dial.dns='223.5.5.5'
+uci -q del_list network.dial.dns='119.29.29.29' || :
+uci -q add_list network.dial.dns='119.29.29.29'
+
+uci -q del_list firewall.wan.network='dial' || :
+uci -q add_list firewall.wan.network='dial'
+
+# First-boot defaults are committed by OpenWrt's boot script.
+[ "${1:-}" = '--defaults' ] && exit 0
+
+uci commit network
+uci commit firewall
+/etc/init.d/network reload
+/etc/init.d/firewall reload

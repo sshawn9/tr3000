@@ -1,0 +1,10 @@
+#!/bin/sh
+# USB storage defaults for block-mount.
+#
+# anon_mount: partitions without an fstab entry are mounted automatically at
+#   /mnt/<device> on hotplug and at boot (official default is off).
+# check_fs: run fsck (e2fsck / fsck.f2fs / fsck.fat / ntfsfix) before mounting,
+#   so a stick that was pulled without unmounting does not come up read-only.
+uci set fstab.@global[0].anon_mount='1'
+uci set fstab.@global[0].check_fs='1'
+uci commit fstab

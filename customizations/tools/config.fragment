@@ -1,0 +1,36 @@
+# CLI working set. Backends are declared explicitly; LuCI frontends are not
+# selected here so they can be added or dropped independently.
+
+# Shell & editing
+CONFIG_PACKAGE_bash=y
+CONFIG_PACKAGE_nano=y
+CONFIG_PACKAGE_tmux=y
+CONFIG_PACKAGE_htop=y
+
+# File transfer over the existing dropbear SSH (WinSCP / VS Code Remote)
+CONFIG_PACKAGE_openssh-sftp-server=y
+
+# HTTP client (mbedTLS backend, same TLS stack as the rest of the image)
+CONFIG_PACKAGE_curl=y
+
+# Network diagnostics
+# No dig-style tool: drill/bind-dig pull in OpenSSL and knot-dig pulls in
+# GnuTLS, which would add a second TLS stack next to mbedTLS. busybox
+# nslookup (OpenWrt's extended applet: -type=, explicit server) covers
+# day-to-day lookups.
+CONFIG_PACKAGE_tcpdump=y
+CONFIG_PACKAGE_iperf3=y
+# Full iproute2 / iw replace the busybox-sized defaults (ip rule / route tables,
+# iw phy info for regdb and per-channel power inspection).
+CONFIG_PACKAGE_ip-full=y
+CONFIG_PACKAGE_iw-full=y
+
+# Storage inspection
+CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_lsblk=y
+CONFIG_PACKAGE_fdisk=y
+
+# Service backends (CLI / UCI driven; matching luci-app-* can be added later)
+CONFIG_PACKAGE_miniupnpd-nftables=y
+CONFIG_PACKAGE_nlbwmon=y
+CONFIG_PACKAGE_etherwake=y

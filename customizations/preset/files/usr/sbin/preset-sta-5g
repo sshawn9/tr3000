@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -e
+
+uci -q set network.wwan5g=interface
+uci -q set network.wwan5g.proto='dhcp'
+uci -q set network.wwan5g.auto='0'
+uci -q set network.wwan5g.disabled='1'
+
+uci -q set wireless.sta5g=wifi-iface
+uci -q set wireless.sta5g.device='radio1'
+uci -q set wireless.sta5g.mode='sta'
+uci -q set wireless.sta5g.network='wwan5g'
+uci -q set wireless.sta5g.disabled='1'
+
+uci -q del_list firewall.wan.network='wwan5g' || :
+uci -q add_list firewall.wan.network='wwan5g'
+
+# First-boot defaults are committed by OpenWrt's boot script.
+[ "${1:-}" = '--defaults' ] && exit 0
+
+uci commit network
+uci commit wireless
+uci commit firewall
+/etc/init.d/network reload
+wifi reload
+/etc/init.d/firewall reload

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+[ -x /bin/bash ] || exit 1
+
+sed -i '/^root:/s|:[^:]*$|:/bin/bash|' /etc/passwd

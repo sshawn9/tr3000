@@ -1,0 +1,4 @@
+#!/bin/sh
+sec=$(uci -q show firewall | sed -n "s/^firewall\.\([^.]*\)\.name='wan'$/\1/p" | head -1)
+[ -n "$sec" ] && uci rename "firewall.$sec=wan"
+uci commit firewall

@@ -1,0 +1,16 @@
+#!/bin/sh
+# Web UI tuning for uhttpd / LuCI.
+#
+# script_timeout: upper bound for CGI processes. LuCI's package manager runs
+#   apk through cgi-exec with no client-side timeout, so a slow mirror can push
+#   an install past the default 60 s and get it killed mid-way.
+# max_requests: concurrent CGI slots (page dispatch, cgi-exec, cgi-download,
+#   cgi-upload, cgi-backup). /ubus calls are handled in-process and are not
+#   affected. Each CGI slot costs ~10 MB, so keep this modest.
+uci set uhttpd.main.script_timeout='600'
+uci set uhttpd.main.max_requests='6'
+uci commit uhttpd
+
+# LuCI login session lifetime (seconds). Default is 3600.
+uci set luci.sauth.sessiontime='86400'
+uci commit luci

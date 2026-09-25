@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+SSID='tr3000_2.4G'
+
+uci -q set wireless.default_radio0=wifi-iface
+uci -q set wireless.default_radio0.device='radio0'
+uci -q set wireless.default_radio0.mode='ap'
+uci -q set wireless.default_radio0.network='lan'
+uci -q set wireless.default_radio0.ssid="$SSID"
+uci -q set wireless.default_radio0.encryption='none'
+uci -q set wireless.default_radio0.disabled='1'
+
+# First-boot defaults are committed by OpenWrt's boot script.
+[ "${1:-}" = '--defaults' ] && exit 0
+
+uci commit wireless
+wifi reload

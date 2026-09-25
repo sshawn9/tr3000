@@ -1,0 +1,3 @@
+# Ignore downloaded upstream assets, but keep self-maintained packages.
+/packages/*
+!/packages/moci/

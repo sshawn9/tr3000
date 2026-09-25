@@ -1,0 +1,5 @@
+# mihomo core (stable "meta" variant, built from source with golang/host) and
+# the nikki transparent-proxy engine. luci-app-nikki is present in packages/
+# but intentionally not selected.
+CONFIG_PACKAGE_mihomo-meta=n
+CONFIG_PACKAGE_nikki=n

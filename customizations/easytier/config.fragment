@@ -1,0 +1,4 @@
+# EasyTier mesh VPN: easytier-core + easytier-cli from the upstream static
+# aarch64 release (see packages/easytier/Makefile). No web console.
+CONFIG_PACKAGE_easytier=y
+CONFIG_PACKAGE_kmod-tun=y

@@ -1,0 +1,19 @@
+mediatek/filogic: use UTF-8 for FAT filenames by default
+
+block-mount mounts hotplugged partitions without any charset option, and the
+kernel default for FAT is iocharset=iso8859-1 with FAT_DEFAULT_UTF8 unset, so
+non-ASCII (e.g. Chinese) filenames on FAT32 sticks show up garbled. Enable
+FAT_DEFAULT_UTF8 so vfat mounts behave like the exfat and ntfs3 drivers, which
+already default to UTF-8. The symbol is not exposed through Config-kernel.in,
+hence a target config patch instead of a CONFIG_KERNEL_* line.
+
+--- a/target/linux/mediatek/filogic/config-6.12
++++ b/target/linux/mediatek/filogic/config-6.12
+@@ -169,6 +169,7 @@
+ CONFIG_EXCLUSIVE_SYSTEM_RAM=y
+ CONFIG_EXT4_FS=y
+ CONFIG_F2FS_FS=y
++CONFIG_FAT_DEFAULT_UTF8=y
+ CONFIG_FIXED_PHY=y
+ CONFIG_FIX_EARLYCON_MEM=y
+ CONFIG_FRAME_POINTER=y
