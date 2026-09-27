@@ -1,6 +1,7 @@
 name: Build and release firmware
 
 on:
+  push:
   workflow_dispatch:
 
 permissions:
