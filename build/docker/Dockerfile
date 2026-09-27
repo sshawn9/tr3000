@@ -1,4 +1,4 @@
-FROM debian:11
+FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -o APT::Update::Error-Mode=any -o Acquire::Retries=3 update \

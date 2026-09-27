@@ -6,7 +6,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../build.conf"
 
 prepare_image() {
     if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-        docker build -t "$IMAGE" -f "$DOCKER_DIR/Dockerfile" "$DOCKER_DIR"
+        docker build --network=host -t "$IMAGE" -f "$DOCKER_DIR/Dockerfile" "$DOCKER_DIR"
     fi
 }
 

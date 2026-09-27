@@ -3,6 +3,7 @@ set -euo pipefail
 umask 022
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+source "$SCRIPT_DIR/../../build/build.conf"
 
 # luci-theme-argon is not part of the official OpenWrt feeds; fetch it from
 # upstream at a pinned release tag so the build is reproducible.
@@ -15,7 +16,10 @@ fetch_git_ref() {
     local dest="$3"
 
     echo "    Cloning: ${repo} @ ${ref}"
-    git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$ref" "$repo" "$dest"
+    git init -q "$dest"
+    git -C "$dest" remote add origin "$repo"
+    git -C "$dest" fetch -q --depth 1 origin "$ref"
+    git -C "$dest" -c advice.detachedHead=false checkout -q FETCH_HEAD
 
     # Strip VCS metadata so the result is a plain OpenWrt package directory.
     rm -rf "$dest/.git" "$dest/.github"
@@ -29,9 +33,9 @@ prepare_packages() {
     local work_dir="$1"
     echo "==> Fetching Web UI packages..."
     fetch_git_ref "$ARGON_REPO" "$ARGON_TAG" "${work_dir}/packages/luci-theme-argon"
-    fetch_git_ref "https://github.com/gSpotx2f/luci-app-cpu-status.git" master \
+    fetch_git_ref "https://github.com/gSpotx2f/luci-app-cpu-status.git" "$CPU_STATUS_COMMIT" \
         "${work_dir}/packages/luci-app-cpu-status"
-    fetch_git_ref "https://github.com/gSpotx2f/luci-app-temp-status.git" master \
+    fetch_git_ref "https://github.com/gSpotx2f/luci-app-temp-status.git" "$TEMP_STATUS_COMMIT" \
         "${work_dir}/packages/luci-app-temp-status"
 }
 
@@ -48,8 +52,8 @@ install_assets() {
 
     echo "==> Web UI assets successfully prepared:"
     echo "    - Package: packages/luci-theme-argon (${ARGON_TAG})"
-    echo "    - Package: packages/luci-app-cpu-status (master)"
-    echo "    - Package: packages/luci-app-temp-status (master)"
+    echo "    - Package: packages/luci-app-cpu-status (${CPU_STATUS_COMMIT})"
+    echo "    - Package: packages/luci-app-temp-status (${TEMP_STATUS_COMMIT})"
 }
 
 main() {

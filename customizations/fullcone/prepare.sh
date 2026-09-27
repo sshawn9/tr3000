@@ -3,7 +3,8 @@ set -euo pipefail
 umask 022
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
-UPSTREAM_BASE="https://raw.githubusercontent.com/immortalwrt/immortalwrt/refs/heads/openwrt-25.12"
+source "$SCRIPT_DIR/../../build/build.conf"
+UPSTREAM_BASE="https://raw.githubusercontent.com/immortalwrt/immortalwrt/$IMMORTALWRT_COMMIT"
 
 fetch_remote_file() {
     local remote_path="$1"
