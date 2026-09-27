@@ -1,0 +1,16 @@
+openssh: wait for elfutils before checking its headers
+
+elfutils removes its staged nlist.h while reconfiguring. If this happens
+between OpenSSH's header check and compilation, the build fails. Finish
+elfutils first so the header remains available throughout the OpenSSH build.
+
+--- a/feeds/packages/net/openssh/Makefile
++++ b/feeds/packages/net/openssh/Makefile
+@@ -22,6 +22,7 @@
+ PKG_LICENSE_FILES:=LICENCE
+ PKG_CPE_ID:=cpe:/a:openbsd:openssh
+ 
++PKG_BUILD_DEPENDS += elfutils
+ PKG_REMOVE_FILES:=
+ 
+ include $(INCLUDE_DIR)/package.mk
