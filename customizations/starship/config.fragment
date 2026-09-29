@@ -1,0 +1,2 @@
+# Cross-shell prompt
+CONFIG_PACKAGE_starship=y

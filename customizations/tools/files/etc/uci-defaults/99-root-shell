@@ -1,5 +1,5 @@
 #!/bin/sh
 
-[ -x /bin/bash ] || exit 1
+[ -x /usr/bin/zsh ] || exit 1
 
-sed -i '/^root:/s|:[^:]*$|:/bin/bash|' /etc/passwd
+sed -i '/^root:/s|:[^:]*$|:/usr/bin/zsh|' /etc/passwd

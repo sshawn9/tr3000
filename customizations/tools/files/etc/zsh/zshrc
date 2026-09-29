@@ -1,0 +1,23 @@
+# Keep OpenWrt's interactive aliases and sh-compatible user customizations.
+[[ -r /etc/shinit ]] && emulate sh -c 'source /etc/shinit'
+
+bindkey -e
+
+HISTFILE="${ZDOTDIR:-$HOME}/.zsh_history"
+HISTSIZE=1000
+SAVEHIST=1000
+setopt append_history hist_ignore_dups hist_ignore_space
+
+# Use the completion functions shipped with Zsh.
+zmodload zsh/complist
+autoload -Uz compinit
+compinit
+zstyle ':completion:*' menu select
+
+# OpenWrt defines shared init actions in rc.common, not each service script.
+# Supply the fallback supported by Zsh's existing _init_d completion.
+zstyle ':completion:*:*:(service|/etc/init.d/*):*:commands' commands \
+    start stop restart reload status enable disable
+
+# Initialize the prompt supplied by the starship package.
+eval "$(starship init zsh)"

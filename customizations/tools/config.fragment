@@ -3,12 +3,15 @@
 
 # Shell & editing
 CONFIG_PACKAGE_bash=y
+CONFIG_PACKAGE_zsh=y
+CONFIG_PACKAGE_cli=y
 CONFIG_PACKAGE_nano=y
 CONFIG_PACKAGE_tmux=y
 CONFIG_PACKAGE_htop=y
 
 # File transfer over the existing dropbear SSH (WinSCP / VS Code Remote)
 CONFIG_PACKAGE_openssh-sftp-server=y
+CONFIG_PACKAGE_rsync=y
 
 # HTTP client (mbedTLS backend, same TLS stack as the rest of the image)
 CONFIG_PACKAGE_curl=y

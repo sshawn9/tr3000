@@ -2,7 +2,13 @@
   "network": {
     "dial": {
       "username": "",
-      "password": ""
+      "password": "",
+      "auto": "1",
+      "disabled": "0"
+    },
+    "wan": {
+      "auto": "0",
+      "disabled": "1"
     }
   },
   "wireless": {

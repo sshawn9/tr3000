@@ -1,6 +1,6 @@
 #!/usr/bin/ucode -S
 import { cursor } from 'uci';
-import { readfile, access } from 'fs';
+import { readfile, access, lsdir, stat } from 'fs';
 
 function ensure(ok, message) {
     if (!ok) { warn('preset-apply: ' + message + '\n'); exit(1); }
@@ -9,48 +9,64 @@ function ensure(ok, message) {
 let check = ARGV[0] === '--check';
 if (check) shift(ARGV);
 if (ARGV[0] === '--help' || ARGV[0] === '-h') {
-    print('Usage: preset-apply [--check] [FILE]\n'); exit(0);
+    print('Usage: preset-apply [--check] [DIRECTORY]\n' +
+          'Default directory: /etc/preset.d\n' +
+          'Read *.jsonc in filename order; skip names starting with "_".\n' +
+          'Later values override earlier ones. --check validates without applying.\n');
+    exit(0);
 }
 if (ARGV[0] === '--') shift(ARGV);
 else ensure(substr(ARGV[0] ?? '', 0, 1) !== '-', 'unknown argument: ' + ARGV[0]);
-ensure(length(ARGV) <= 1, 'expected one JSONC file');
-const text = readfile(ARGV[0] ?? '/etc/preset.jsonc');
-ensure(text !== null, 'cannot read configuration file');
-let config;
-try { config = json(text); }
-catch (e) { ensure(false, 'invalid JSONC'); }
-ensure(type(config) === 'object', 'configuration must be an object');
+ensure(length(ARGV) <= 1, 'expected one JSONC directory');
+const directory = ARGV[0] ?? '/etc/preset.d';
+const files = lsdir(directory, '*.jsonc');
+ensure(files !== null, 'cannot read configuration directory: ' + directory);
 
 const uci = cursor();
 const packages = {};
-for (let pkg, sections in config) {
-    ensure(match(pkg, /^[A-Za-z0-9_-]+$/) && type(sections) === 'object', pkg + ': expected UCI package and sections');
-    for (let section, fields in sections) {
-        ensure(type(fields) === 'object', pkg + '.' + section + ': fields must be an object');
-        for (let key in keys(fields))
-            if (fields[key] === '') delete fields[key];
-        if (!length(fields)) continue;
-        if (!packages[pkg]) {
-            ensure(uci.load(pkg), 'cannot load ' + pkg);
-            if (!check) {
-                let pending = uci.changes(pkg);
-                ensure(pending !== null && !length(pending), pkg + ' has pending UCI changes');
+// lsdir() sorts names. Stage every file in one cursor before committing.
+for (let name in files) {
+    if (substr(name, 0, 1) === '_') continue;
+    const file = directory + '/' + name;
+    const info = stat(file);
+    ensure(info !== null, 'cannot access configuration file: ' + file);
+    if (info.type !== 'file') continue;
+    const text = readfile(file);
+    ensure(text !== null, 'cannot read configuration file: ' + file);
+    let config;
+    try { config = json(text); }
+    catch (e) { ensure(false, file + ': invalid JSONC'); }
+    ensure(type(config) === 'object', file + ': configuration must be an object');
+
+    for (let pkg, sections in config) {
+        ensure(match(pkg, /^[A-Za-z0-9_-]+$/) && type(sections) === 'object', pkg + ': expected UCI package and sections');
+        for (let section, fields in sections) {
+            ensure(type(fields) === 'object', pkg + '.' + section + ': fields must be an object');
+            for (let key in keys(fields))
+                if (fields[key] === '') delete fields[key];
+            if (!length(fields)) continue;
+            if (!packages[pkg]) {
+                ensure(uci.load(pkg), 'cannot load ' + pkg);
+                if (!check) {
+                    let pending = uci.changes(pkg);
+                    ensure(pending !== null && !length(pending), pkg + ' has pending UCI changes');
+                }
+                packages[pkg] = true;
             }
-            packages[pkg] = true;
-        }
-        if (exists(fields, '.type'))
-            ensure(uci.set(pkg, section, fields['.type']), pkg + '.' + section + ': cannot set section type');
-        for (let key, value in fields) {
-            if (key === '.type') continue;
-            let path = pkg + '.' + section + '.' + key;
-            if (type(value) === 'array')
-                for (let item in value)
-                    ensure(item !== null && type(item) !== 'array' && type(item) !== 'object', path + ': list items must be scalars');
-            if (value === null || (type(value) === 'array' && !length(value))) {
-                if (uci.get(pkg, section, key) !== null)
-                    ensure(uci.delete(pkg, section, key), 'cannot delete ' + path);
+            if (exists(fields, '.type'))
+                ensure(uci.set(pkg, section, fields['.type']), pkg + '.' + section + ': cannot set section type');
+            for (let key, value in fields) {
+                if (key === '.type') continue;
+                let path = pkg + '.' + section + '.' + key;
+                if (type(value) === 'array')
+                    for (let item in value)
+                        ensure(item !== null && type(item) !== 'array' && type(item) !== 'object', path + ': list items must be scalars');
+                if (value === null || (type(value) === 'array' && !length(value))) {
+                    if (uci.get(pkg, section, key) !== null)
+                        ensure(uci.delete(pkg, section, key), 'cannot delete ' + path);
+                }
+                else ensure(uci.set(pkg, section, key, value), 'cannot set ' + path);
             }
-            else ensure(uci.set(pkg, section, key, value), 'cannot set ' + path);
         }
     }
 }
