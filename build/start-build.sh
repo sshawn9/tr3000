@@ -4,14 +4,29 @@ umask 022
 
 source "$(dirname -- "${BASH_SOURCE[0]}")/build.conf"
 
-bash "$DOCKER_DIR/start.sh"
+run_in_container() {
+    local workdir="$1"
+    shift
 
-docker exec -w "$CONTAINER_BASE" "$CONTAINER" bash "$CONTAINER_BASE/prepare-sources.sh"
-docker exec -w "$CONTAINER_BASE" "$CONTAINER" bash "$CONTAINER_BASE/prepare-customizations.sh"
-docker exec -w "$CONTAINER_TREE" "$CONTAINER" make defconfig
-docker exec -w "$CONTAINER_TREE" "$CONTAINER" make -j"$JOBS" download
-docker exec -w "$CONTAINER_TREE" "$CONTAINER" make -j"$JOBS" "$@"
+    # docker exec does not inherit the calling shell's umask.
+    docker exec -w "$workdir" "$CONTAINER" \
+        bash -c 'umask 022; exec "$@"' -- "$@"
+}
 
-mkdir -p "$OUTPUT"
-rsync -a --delete "$TREE/bin/" "$OUTPUT/"
-cp "$TREE/.config" "$OUTPUT/build.config"
+build_firmware() {
+    bash "$DOCKER_DIR/start.sh"
+
+    run_in_container "$CONTAINER_BASE" bash "$CONTAINER_BASE/prepare-sources.sh"
+    run_in_container "$CONTAINER_BASE" bash "$CONTAINER_BASE/prepare-customizations.sh"
+    run_in_container "$CONTAINER_TREE" make defconfig
+    run_in_container "$CONTAINER_TREE" make -j"$JOBS" download
+    run_in_container "$CONTAINER_TREE" make -j"$JOBS" "$@"
+
+    mkdir -p "$OUTPUT"
+    rsync -a --delete "$TREE/bin/" "$OUTPUT/"
+    cp "$TREE/.config" "$OUTPUT/build.config"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    build_firmware "$@"
+fi

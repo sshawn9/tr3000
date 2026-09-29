@@ -16,6 +16,7 @@ create_container() {
         mkdir -p "$WORK"
         docker create --name "$CONTAINER" --init --network host \
             --user "$(id -u):$(id -g)" --label "wrt.build=$BASE" \
+            --mount "type=bind,src=/etc/localtime,dst=/etc/localtime,readonly" \
             --mount "type=bind,src=$PROJECT,dst=$CONTAINER_PROJECT,readonly" \
             --mount "type=bind,src=$BASE,dst=$CONTAINER_BASE" \
             --mount "type=bind,src=$WORK,dst=$CONTAINER_WORK" \

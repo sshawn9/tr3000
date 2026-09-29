@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Functions for sources.
+umask 022
 
 source "$(dirname -- "${BASH_SOURCE[0]}")/build.conf"
 

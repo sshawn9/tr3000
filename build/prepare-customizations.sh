@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Functions for customizations.
+umask 022
 
 source "$(dirname -- "${BASH_SOURCE[0]}")/build.conf"
 
@@ -55,6 +56,27 @@ prepare_config() {
     cat "$CUSTOM"/*/config.fragment > .config
 }
 
+prepare_permissions() {
+    local dir
+    local -a dirs=()
+
+    for dir in package feeds target files; do
+        if [[ -d "$TREE/$dir" ]]; then
+            dirs+=("$TREE/$dir")
+        fi
+    done
+    if (( ${#dirs[@]} == 0 )); then
+        return
+    fi
+
+    # Repair old 0666/0777 checkouts before package copies preserve their modes.
+    # Touch repaired files so OpenWrt also invalidates cached package builds.
+    # Keep executable bits, Git metadata and generated rootfs permissions intact.
+    find "${dirs[@]}" -name .git -prune -o \
+        -type d -perm /022 -exec chmod go-w -- {} + -o \
+        -type f -perm /022 -exec chmod go-w -- {} + -exec touch -- {} +
+}
+
 prepare_customizations() (
     cd "$TREE"
     shopt -s nullglob
@@ -64,6 +86,7 @@ prepare_customizations() (
     copy_package_patches
     copy_custom_files
     prepare_config
+    prepare_permissions
 )
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
