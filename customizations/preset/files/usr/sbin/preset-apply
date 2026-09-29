@@ -1,0 +1,69 @@
+#!/usr/bin/ucode -S
+import { cursor } from 'uci';
+import { readfile, access } from 'fs';
+
+function ensure(ok, message) {
+    if (!ok) { warn('preset-apply: ' + message + '\n'); exit(1); }
+}
+
+let check = ARGV[0] === '--check';
+if (check) shift(ARGV);
+if (ARGV[0] === '--help' || ARGV[0] === '-h') {
+    print('Usage: preset-apply [--check] [FILE]\n'); exit(0);
+}
+if (ARGV[0] === '--') shift(ARGV);
+else ensure(substr(ARGV[0] ?? '', 0, 1) !== '-', 'unknown argument: ' + ARGV[0]);
+ensure(length(ARGV) <= 1, 'expected one JSONC file');
+const text = readfile(ARGV[0] ?? '/etc/preset.jsonc');
+ensure(text !== null, 'cannot read configuration file');
+let config;
+try { config = json(text); }
+catch (e) { ensure(false, 'invalid JSONC'); }
+ensure(type(config) === 'object', 'configuration must be an object');
+
+const uci = cursor();
+const packages = {};
+for (let pkg, sections in config) {
+    ensure(match(pkg, /^[A-Za-z0-9_-]+$/) && type(sections) === 'object', pkg + ': expected UCI package and sections');
+    for (let section, fields in sections) {
+        ensure(type(fields) === 'object', pkg + '.' + section + ': fields must be an object');
+        for (let key in keys(fields))
+            if (fields[key] === '') delete fields[key];
+        if (!length(fields)) continue;
+        if (!packages[pkg]) {
+            ensure(uci.load(pkg), 'cannot load ' + pkg);
+            if (!check) {
+                let pending = uci.changes(pkg);
+                ensure(pending !== null && !length(pending), pkg + ' has pending UCI changes');
+            }
+            packages[pkg] = true;
+        }
+        if (exists(fields, '.type'))
+            ensure(uci.set(pkg, section, fields['.type']), pkg + '.' + section + ': cannot set section type');
+        for (let key, value in fields) {
+            if (key === '.type') continue;
+            let path = pkg + '.' + section + '.' + key;
+            if (type(value) === 'array')
+                for (let item in value)
+                    ensure(item !== null && type(item) !== 'array' && type(item) !== 'object', path + ': list items must be scalars');
+            if (value === null || (type(value) === 'array' && !length(value))) {
+                if (uci.get(pkg, section, key) !== null)
+                    ensure(uci.delete(pkg, section, key), 'cannot delete ' + path);
+            }
+            else ensure(uci.set(pkg, section, key, value), 'cannot set ' + path);
+        }
+    }
+}
+
+if (check) { print('preset-apply: configuration valid\n'); exit(0); }
+const services = {}, reloads = { wireless: ['network'], dhcp: ['dnsmasq', 'odhcpd'] };
+for (let pkg in packages) {
+    ensure(uci.commit(pkg), 'cannot commit ' + pkg);
+    for (let service in reloads[pkg] ?? [pkg]) services[service] = true;
+}
+let ok = true;
+for (let service in services) {
+    let path = '/etc/init.d/' + service;
+    if (access(path, 'x') && system([path, 'reload']) !== 0) ok = false;
+}
+ensure(ok, 'configuration committed, but a service reload failed');

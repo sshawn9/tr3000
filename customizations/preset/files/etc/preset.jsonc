@@ -1,0 +1,14 @@
+{
+  "network": {
+    "dial": {
+      "username": "",
+      "password": ""
+    }
+  },
+  "wireless": {
+    "default_radio1": {
+      // "encryption": "psk2",
+      "key": ""
+    }
+  }
+}
