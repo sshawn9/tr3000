@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -e
+
+# A stable device name is assigned by the net hotplug script.
+# Keep an existing user-configured interface when upgrading firmware.
+if ! uci -q get network.usbwan >/dev/null; then
+    uci set network.usbwan=interface
+    uci set network.usbwan.proto='dhcp'
+    uci set network.usbwan.device='usbwan'
+fi
+
+# 90-zone-wan gives the existing WAN zone its stable UCI section name.
+uci -q del_list firewall.wan.network='usbwan' || :
+uci add_list firewall.wan.network='usbwan'
+
+uci commit network
+uci commit firewall

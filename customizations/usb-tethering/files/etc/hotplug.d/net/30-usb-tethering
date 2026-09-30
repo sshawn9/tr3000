@@ -1,0 +1,18 @@
+#!/bin/sh
+
+[ "${ACTION:-}" = 'add' ] || exit 0
+[ -n "${INTERFACE:-}" ] || exit 0
+[ "$INTERFACE" != 'usbwan' ] || exit 0
+
+# Android may appear as usbN, while iPhone may appear as ethN.
+# Match the USB network driver instead of claiming a numbered Ethernet port.
+usb_tether_driver="$(readlink -f "/sys/class/net/$INTERFACE/device/driver")" || exit 0
+case "${usb_tether_driver##*/}" in
+    rndis_host|cdc_ether|cdc_ncm|ipheth) ;;
+    *) exit 0 ;;
+esac
+
+# One tethering uplink at a time; never take over an existing usbwan device.
+[ ! -e /sys/class/net/usbwan ] || exit 0
+ip link set dev "$INTERFACE" name usbwan ||
+    logger -t usb-tethering "Could not rename $INTERFACE to usbwan"
