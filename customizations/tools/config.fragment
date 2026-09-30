@@ -9,6 +9,11 @@ CONFIG_PACKAGE_nano=y
 CONFIG_PACKAGE_tmux=y
 CONFIG_PACKAGE_htop=y
 
+# JSON processing and process diagnostics
+CONFIG_PACKAGE_jq=y
+CONFIG_PACKAGE_strace=y
+CONFIG_PACKAGE_lsof=y
+
 # File transfer over the existing dropbear SSH (WinSCP / VS Code Remote)
 CONFIG_PACKAGE_openssh-sftp-server=y
 CONFIG_PACKAGE_rsync=y
@@ -23,10 +28,24 @@ CONFIG_PACKAGE_curl=y
 # day-to-day lookups.
 CONFIG_PACKAGE_tcpdump=y
 CONFIG_PACKAGE_iperf3=y
+# Includes the interactive/text modes as well as JSON reports.
+CONFIG_PACKAGE_mtr-json=y
+CONFIG_PACKAGE_ethtool-full=y
+CONFIG_PACKAGE_ss=y
+CONFIG_PACKAGE_conntrack=y
+CONFIG_PACKAGE_socat=y
+CONFIG_PACKAGE_iftop=y
+CONFIG_PACKAGE_bmon=y
+CONFIG_PACKAGE_nstat=y
 # Full iproute2 / iw replace the busybox-sized defaults (ip rule / route tables,
 # iw phy info for regdb and per-channel power inspection).
 CONFIG_PACKAGE_ip-full=y
+CONFIG_PACKAGE_ip-bridge=y
 CONFIG_PACKAGE_iw-full=y
+
+# Traffic shaping and network emulation
+CONFIG_PACKAGE_tc-full=y
+CONFIG_PACKAGE_kmod-netem=y
 
 # Storage inspection
 CONFIG_PACKAGE_usbutils=y
