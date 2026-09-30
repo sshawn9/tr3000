@@ -7,10 +7,10 @@
 # max_requests: concurrent CGI slots (page dispatch, cgi-exec, cgi-download,
 #   cgi-upload, cgi-backup). /ubus calls are handled in-process and are not
 #   affected. Each CGI slot costs ~10 MB, so keep this modest.
-uci set uhttpd.main.script_timeout='600'
-uci set uhttpd.main.max_requests='6'
-uci commit uhttpd
+uci set uhttpd.main.script_timeout='600' || exit 1
+uci set uhttpd.main.max_requests='6' || exit 1
+uci commit uhttpd || exit 1
 
 # LuCI login session lifetime (seconds). Default is 3600.
-uci set luci.sauth.sessiontime='86400'
-uci commit luci
+uci set luci.sauth.sessiontime='86400' || exit 1
+uci commit luci || exit 1

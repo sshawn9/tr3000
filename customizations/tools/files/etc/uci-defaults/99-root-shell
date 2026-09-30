@@ -2,4 +2,4 @@
 
 [ -x /usr/bin/zsh ] || exit 1
 
-sed -i '/^root:/s|:[^:]*$|:/usr/bin/zsh|' /etc/passwd
+sed -i '/^root:/s|:[^:]*$|:/usr/bin/zsh|' /etc/passwd || exit 1

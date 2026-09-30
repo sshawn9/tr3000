@@ -1,4 +1,8 @@
 #!/bin/sh
-sec=$(uci -q show firewall | sed -n "s/^firewall\.\([^.]*\)\.name='lan'$/\1/p" | head -1)
-[ -n "$sec" ] && uci rename "firewall.$sec=lan"
-uci commit firewall
+firewall_config=$(uci -q show firewall) || exit 1
+sec=$(printf '%s\n' "$firewall_config" |
+    sed -n "/^firewall\.[^.]*\.name='lan'$/ { s/^firewall\.//; s/\.name=.*//; p; q; }") || exit 1
+if [ -n "$sec" ] && [ "$sec" != 'lan' ]; then
+    uci rename "firewall.$sec=lan" || exit 1
+fi
+uci commit firewall || exit 1
