@@ -1,0 +1,16 @@
+{
+  "dhcp": {
+    "laptop_lan": {
+      ".type": "host",
+      "name": "laptop-lan",
+      "mac": "02:11:22:33:44:01",
+      "ip": "10.0.0.100"
+    },
+    "laptop_wifi": {
+      ".type": "host",
+      "name": "laptop-wifi",
+      "mac": "02:11:22:33:44:02",
+      "ip": "10.0.0.101"
+    }
+  }
+}
