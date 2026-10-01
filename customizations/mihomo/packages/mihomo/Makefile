@@ -39,6 +39,10 @@ define Package/mihomo/description
   A rule based proxy in Go
 endef
 
+define Package/mihomo/conffiles
+/etc/mihomo/
+endef
+
 define Build/Prepare
 	$(Build/Prepare/Default)
 	$(RM) -r $(PKG_BUILD_DIR)/rules/logic_test

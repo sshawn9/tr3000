@@ -34,6 +34,10 @@ define Package/starship/description
   A customizable prompt for interactive shells.
 endef
 
+define Package/starship/conffiles
+/root/.config/starship.toml
+endef
+
 # The archive contains the binary at its root, without a source directory.
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)

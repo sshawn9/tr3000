@@ -1,0 +1,6 @@
+/etc/zsh/
+/root/.zshenv
+/root/.zprofile
+/root/.zshrc
+/root/.zlogin
+/root/.zlogout
