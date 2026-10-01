@@ -33,6 +33,19 @@ prepare_packages() {
     fetch_remote_file \
         "package/network/utils/fullconenat-nft/patches/010-fix-build-with-kernel-6.12.patch" \
         "${work_dir}/packages/fullconenat-nft/patches/010-fix-build-with-kernel-6.12.patch"
+
+    # These patches are maintained locally, outside the generated directories.
+    # Reapply them after every upstream refresh so the notifier fix survives.
+    cp "$SCRIPT_DIR"/local-patches/*.patch \
+        "${work_dir}/packages/fullconenat-nft/patches/"
+
+    local makefile="${work_dir}/packages/fullconenat-nft/Makefile"
+    if ! grep -Fxq '    CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y' "$makefile"; then
+        echo "ERROR: FullCone Kconfig dependencies changed; review the FullCone hook integration." >&2
+        return 1
+    fi
+    sed -i 's/^    CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y$/    CONFIG_NF_CONNTRACK_FULLCONE_DESTROY_HOOK=y/' \
+        "$makefile"
 }
 
 # Component patches are stored as patches/<package-name>/<patch>; build.sh
@@ -68,6 +81,8 @@ install_assets() {
     echo "==> FullCone NAT assets successfully prepared:"
     echo "    - Package: packages/fullconenat-nft/Makefile"
     echo "               packages/fullconenat-nft/patches/010-fix-build-with-kernel-6.12.patch"
+    echo "               packages/fullconenat-nft/patches/020-fix-conntrack-notifier-lifecycle.patch"
+    echo "    - Kernel:  tree-patches/002-conntrack-fullcone-destroy-hook.patch"
     echo "    - Patches: patches/firewall4/001-firewall4-add-support-for-fullcone-nat.patch"
     echo "               patches/nftables/010-nftables-add-fullcone-expression-support.patch"
     echo "               patches/libnftnl/001-libnftnl-add-fullcone-expression-support.patch"

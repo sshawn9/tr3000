@@ -1,0 +1,96 @@
+Subject: [PATCH] kernel: include the FullCone destruction hook for Linux 6.12
+
+---
+diff --git a/target/linux/generic/hack-6.12/644-netfilter-conntrack-fullcone-destroy-hook.patch b/target/linux/generic/hack-6.12/644-netfilter-conntrack-fullcone-destroy-hook.patch
+new file mode 100644
+--- /dev/null
++++ b/target/linux/generic/hack-6.12/644-netfilter-conntrack-fullcone-destroy-hook.patch
+@@ -0,0 +1,88 @@
++Subject: [PATCH] netfilter: conntrack: notify FullCone on UDP destruction
++
++Give FullCone a dedicated RCU callback in each network namespace. Call it
++once when a confirmed UDP connection first enters the dying state. Leave
++ctnetlink, event cache allocation and missed-event retries unchanged.
++
++The matching FullCone patch owns this private hook, serializes updates
++with its existing rule-lifecycle mutex and waits for RCU readers before
++teardown. No generic observer or registration API is needed.
++
++---
++diff --git a/include/net/netns/conntrack.h b/include/net/netns/conntrack.h
++--- a/include/net/netns/conntrack.h
+++++ b/include/net/netns/conntrack.h
++@@ -17,6 +17,7 @@
++ 
++ struct ctl_table_header;
++ struct nf_conntrack_ecache;
+++struct nf_conn;
++ 
++ struct nf_generic_net {
++ 	unsigned int timeout;
++@@ -105,6 +106,9 @@
++ 
++ 	struct ip_conntrack_stat __percpu *stat;
++ 	struct nf_ct_event_notifier __rcu *nf_conntrack_event_cb;
+++#ifdef CONFIG_NF_CONNTRACK_FULLCONE_DESTROY_HOOK
+++	void (* __rcu fullcone_destroy_hook)(const struct nf_conn *ct);
+++#endif
++ 	struct nf_ip_net	nf_ct_proto;
++ #if defined(CONFIG_NF_CONNTRACK_LABELS)
++ 	atomic_t		labels_used;
++diff --git a/net/netfilter/Kconfig b/net/netfilter/Kconfig
++--- a/net/netfilter/Kconfig
+++++ b/net/netfilter/Kconfig
++@@ -163,6 +163,13 @@
++ 	  to get notified about changes in the connection tracking state.
++ 
++ 	  If unsure, say `N'.
+++
+++config NF_CONNTRACK_FULLCONE_DESTROY_HOOK
+++	bool "FullCone UDP conntrack destruction hook"
+++	help
+++	  Notify FullCone in its network namespace when a confirmed UDP
+++	  connection first enters the dying state. This is independent of Netlink
+++	  event delivery and does not require an event cache extension.
++ 
++ config NF_CONNTRACK_TIMEOUT
++ 	bool  'Connection tracking timeout'
++diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
++--- a/net/netfilter/nf_conntrack_core.c
+++++ b/net/netfilter/nf_conntrack_core.c
++@@ -655,6 +655,26 @@
++ #endif
++ }
++ 
+++#ifdef CONFIG_NF_CONNTRACK_FULLCONE_DESTROY_HOOK
+++static void nf_ct_notify_udp_destroy(struct nf_conn *ct)
+++{
+++	struct net *net = nf_ct_net(ct);
+++	void (*hook)(const struct nf_conn *ct);
+++
+++	if (nf_ct_protonum(ct) != IPPROTO_UDP || !nf_ct_is_confirmed(ct) ||
+++	    !rcu_access_pointer(net->ct.fullcone_destroy_hook))
+++		return;
+++
+++	rcu_read_lock();
+++	hook = rcu_dereference(net->ct.fullcone_destroy_hook);
+++	if (hook)
+++		hook(ct);
+++	rcu_read_unlock();
+++}
+++#else
+++static inline void nf_ct_notify_udp_destroy(struct nf_conn *ct) {}
+++#endif
+++
++ bool nf_ct_delete(struct nf_conn *ct, u32 portid, int report)
++ {
++ 	struct nf_conn_tstamp *tstamp;
++@@ -662,6 +682,8 @@
++ 
++ 	if (test_and_set_bit(IPS_DYING_BIT, &ct->status))
++ 		return false;
+++
+++	nf_ct_notify_udp_destroy(ct);
++ 
++ 	tstamp = nf_conn_tstamp_find(ct);
++ 	if (tstamp) {
