@@ -6,6 +6,8 @@ if ! uci -q get network.usbwan >/dev/null; then
     uci set network.usbwan=interface || exit 1
     uci set network.usbwan.proto='dhcp' || exit 1
     uci set network.usbwan.device='usbwan' || exit 1
+    uci set network.usbwan.auto='0' || exit 1
+    uci set network.usbwan.disabled='1' || exit 1
 fi
 
 # 90-zone-wan gives the existing WAN zone its stable UCI section name.
