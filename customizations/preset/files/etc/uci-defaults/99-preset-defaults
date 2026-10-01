@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Name firewall sections before assigning interfaces to their zones.
+# Configure interfaces before applying their final enablement settings.
+/bin/sh /etc/scripts/defaults/rename-firewall-lan-section --defaults || exit 1
+/bin/sh /etc/scripts/defaults/rename-firewall-wan-section --defaults || exit 1
+/bin/sh /etc/scripts/defaults/configure-wifi-ap-2g --defaults || exit 1
+/bin/sh /etc/scripts/defaults/configure-wifi-ap-5g --defaults || exit 1
+/bin/sh /etc/scripts/defaults/configure-wifi-sta-2g --defaults || exit 1
+/bin/sh /etc/scripts/defaults/configure-wifi-sta-5g --defaults || exit 1
+/bin/sh /etc/scripts/defaults/configure-pppoe-interface --defaults || exit 1
+/bin/sh /etc/scripts/defaults/set-lan-ip --defaults || exit 1
+/bin/sh /etc/scripts/defaults/add-wan-dns --defaults || exit 1
+/bin/sh /etc/scripts/defaults/disable-wan-and-wan6 --defaults || exit 1
+/bin/sh /etc/scripts/defaults/disable-radio0 --defaults || exit 1
+/bin/sh /etc/scripts/defaults/enable-radio1 --defaults || exit 1
+/bin/sh /etc/scripts/defaults/set-timezone-shanghai --defaults || exit 1
+/bin/sh /etc/scripts/defaults/disable-upgrade-check-and-package-upgrade --defaults || exit 1
+/bin/sh /etc/scripts/defaults/enable-upnp --defaults || exit 1

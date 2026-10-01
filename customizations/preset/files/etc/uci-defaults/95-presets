@@ -1,7 +1,0 @@
-#!/bin/sh
-
-preset-ap-2g --defaults || exit 1
-preset-ap-5g --defaults || exit 1
-preset-sta-2g --defaults || exit 1
-preset-sta-5g --defaults || exit 1
-preset-dial --defaults || exit 1

@@ -10,13 +10,17 @@ uci -q set network.dial.norelease='1'
 uci -q set network.dial.auto='0'
 uci -q set network.dial.disabled='1'
 
-uci -q del_list network.dial.dns='223.5.5.5' || :
-uci -q add_list network.dial.dns='223.5.5.5'
-uci -q del_list network.dial.dns='119.29.29.29' || :
-uci -q add_list network.dial.dns='119.29.29.29'
+for dns in 223.5.5.5 119.29.29.29; do
+    case " $(uci -q get network.dial.dns) " in
+        *" $dns "*) ;;
+        *) uci -q add_list "network.dial.dns=$dns" ;;
+    esac
+done
 
-uci -q del_list firewall.wan.network='dial' || :
-uci -q add_list firewall.wan.network='dial'
+case " $(uci -q get firewall.wan.network) " in
+    *" dial "*) ;;
+    *) uci -q add_list firewall.wan.network='dial' ;;
+esac
 
 # First-boot defaults are committed by OpenWrt's boot script.
 [ "${1:-}" = '--defaults' ] && exit 0

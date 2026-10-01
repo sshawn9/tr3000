@@ -4,3 +4,8 @@ uci set network.wan.auto='0' || exit 1
 uci set network.wan.disabled='1' || exit 1
 uci set network.wan6.auto='0' || exit 1
 uci set network.wan6.disabled='1' || exit 1
+
+[ "${1:-}" = '--defaults' ] && exit 0
+
+uci commit network || exit 1
+/etc/init.d/network reload

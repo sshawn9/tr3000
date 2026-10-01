@@ -1,0 +1,13 @@
+#!/bin/sh
+
+for dns in 223.5.5.5 119.29.29.29; do
+    case " $(uci -q get network.wan.dns) " in
+        *" $dns "*) ;;
+        *) uci add_list "network.wan.dns=$dns" || exit 1 ;;
+    esac
+done
+
+[ "${1:-}" = '--defaults' ] && exit 0
+
+uci commit network || exit 1
+/etc/init.d/network reload

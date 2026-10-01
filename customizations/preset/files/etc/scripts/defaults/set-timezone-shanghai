@@ -1,4 +1,8 @@
 #!/bin/sh
 uci set 'system.@system[0].timezone=CST-8' || exit 1
 uci set 'system.@system[0].zonename=Asia/Shanghai' || exit 1
+
+[ "${1:-}" = '--defaults' ] && exit 0
+
 uci commit system || exit 1
+/etc/init.d/system reload

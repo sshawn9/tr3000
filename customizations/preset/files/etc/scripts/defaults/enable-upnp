@@ -1,0 +1,8 @@
+#!/bin/sh
+uci set upnpd.config.enabled='1' || exit 1
+/etc/init.d/miniupnpd enable || exit 1
+
+[ "${1:-}" = '--defaults' ] && exit 0
+
+uci commit upnpd || exit 1
+/etc/init.d/miniupnpd reload

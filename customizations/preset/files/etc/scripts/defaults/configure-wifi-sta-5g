@@ -13,8 +13,10 @@ uci -q set wireless.sta5g.mode='sta'
 uci -q set wireless.sta5g.network='wwan5g'
 uci -q set wireless.sta5g.disabled='1'
 
-uci -q del_list firewall.wan.network='wwan5g' || :
-uci -q add_list firewall.wan.network='wwan5g'
+case " $(uci -q get firewall.wan.network) " in
+    *" wwan5g "*) ;;
+    *) uci -q add_list firewall.wan.network='wwan5g' ;;
+esac
 
 # First-boot defaults are committed by OpenWrt's boot script.
 [ "${1:-}" = '--defaults' ] && exit 0

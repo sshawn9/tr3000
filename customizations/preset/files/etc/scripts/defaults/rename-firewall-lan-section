@@ -5,4 +5,8 @@ sec=$(printf '%s\n' "$firewall_config" |
 if [ -n "$sec" ] && [ "$sec" != 'lan' ]; then
     uci rename "firewall.$sec=lan" || exit 1
 fi
+
+[ "${1:-}" = '--defaults' ] && exit 0
+
 uci commit firewall || exit 1
+/etc/init.d/firewall reload
