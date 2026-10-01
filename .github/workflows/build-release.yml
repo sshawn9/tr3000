@@ -5,11 +5,12 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -51,6 +52,7 @@ jobs:
         run: bash build/build-on-ubuntu.sh -j"$(nproc)" V=s
 
       - name: Save compilation cache
+        id: save-cache
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: actions/cache/save@v5
         with:
@@ -60,6 +62,29 @@ jobs:
             ${{ steps.config.outputs.tree }}/build_dir
             ${{ steps.config.outputs.tree }}/staging_dir
           key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Delete previous compilation caches
+        if: ${{ !cancelled() && steps.save-cache.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CACHE_KEY: ${{ steps.cache.outputs.cache-primary-key }}
+        run: |
+          caches="$(gh api --method GET --paginate \
+            "repos/$GITHUB_REPOSITORY/actions/caches" \
+            -f ref="$GITHUB_REF" -f key="openwrt-" -F per_page=100 \
+            | jq -s '[.[].actions_caches[]]')"
+
+          if ! jq -e --arg key "$CACHE_KEY" 'any(.[]; .key == $key)' <<< "$caches" > /dev/null; then
+            echo "::warning::New compilation cache was not found; keeping existing caches."
+            exit 0
+          fi
+
+          jq -r --arg key "$CACHE_KEY" '.[] | select(.key != $key) | .id' <<< "$caches" |
+            while read -r cache_id; do
+              echo "Deleting old compilation cache $cache_id"
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/caches/$cache_id"
+            done
 
       - name: Publish GitHub Release
         env:
