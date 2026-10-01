@@ -1,0 +1,249 @@
+Subject: [PATCH] mediatek: fix hardware flow accounting for Linux 6.12
+
+---
+--- /dev/null
++++ b/target/linux/mediatek/patches-6.12/999-01-fix-ppe-flow-accounting.patch
+@@ -0,0 +1,243 @@
++Subject: [PATCH] net: mediatek: retain flow counters across PPE bindings
++
++Keep reported totals separate from retired hardware bindings. Account a
++binding once before detaching it or resetting its MIB slot. Retire old
++owners before publishing a replacement and preserve other hardware ways
++in the same hash bucket.
++
++Retired L2 subflows contribute their final counters to their parent even
++when detached outside a stats poll. Clear only the expired child, not the parent and its other children.
++Reuse the subflow's unused rhashtable node for its parent pointer, keeping
++struct mtk_flow_entry the same size.
++
++---
++--- a/drivers/net/ethernet/mediatek/mtk_ppe.c
+++++ b/drivers/net/ethernet/mediatek/mtk_ppe.c
++@@ -514,6 +514,23 @@
++ 	return !memcmp(&entry->data.data, &data->data, len - 4);
++ }
++ 
+++/* Retire a binding before its MIB slot can be reset or reused. */
+++static void
+++mtk_flow_entry_unbind(struct mtk_ppe *ppe, struct mtk_flow_entry *entry)
+++{
+++	struct mtk_foe_accounting *acct;
+++
+++	if (entry->hash == 0xffff)
+++		return;
+++
+++	acct = mtk_ppe_mib_entry_read(ppe, entry->hash);
+++	if (acct) {
+++		entry->prev_packets += acct->packets;
+++		entry->prev_bytes += acct->bytes;
+++	}
+++	entry->hash = 0xffff;
+++}
+++
++ static void
++ __mtk_foe_entry_clear(struct mtk_ppe *ppe, struct mtk_flow_entry *entry,
++ 		      bool set_state)
++@@ -537,11 +554,13 @@
++ 		dma_wmb();
++ 		mtk_ppe_cache_clear(ppe);
++ 	}
++-	entry->hash = 0xffff;
+++	mtk_flow_entry_unbind(ppe, entry);
++ 
++ 	if (entry->type != MTK_FLOW_TYPE_L2_SUBFLOW)
++ 		return;
++ 
+++	entry->l2_parent->prev_packets += entry->prev_packets;
+++	entry->l2_parent->prev_bytes += entry->prev_bytes;
++ 	hlist_del_init(&entry->l2_list);
++ 	hlist_del_init(&entry->list);
++ 	kfree(entry);
++@@ -560,10 +579,9 @@
++ }
++ 
++ static bool
++-mtk_flow_entry_update(struct mtk_ppe *ppe, struct mtk_flow_entry *entry,
++-		      u64 *packets, u64 *bytes)
++-{
++-	struct mtk_foe_accounting *acct;
+++mtk_flow_entry_update(struct mtk_ppe *ppe, struct mtk_flow_entry *entry)
+++{
+++	struct mtk_foe_accounting *acct = NULL;
++ 	struct mtk_foe_entry foe = {};
++ 	struct mtk_foe_entry *hwe;
++ 	u16 hash = entry->hash;
++@@ -571,7 +589,7 @@
++ 	int len;
++ 
++ 	if (hash == 0xffff)
++-		return false;
+++		goto out;
++ 
++ 	hwe = mtk_foe_get_entry(ppe, hash);
++ 	len = mtk_flow_entry_match_len(ppe->eth, &entry->data);
++@@ -579,12 +597,7 @@
++ 
++ 	if (!mtk_flow_entry_match(ppe->eth, entry, &foe, len) ||
++ 	    FIELD_GET(MTK_FOE_IB1_STATE, foe.ib1) != MTK_FOE_STATE_BIND) {
++-		acct = mtk_ppe_acct_data(ppe, hash);
++-		if (acct) {
++-			entry->prev_packets += acct->packets;
++-			entry->prev_bytes += acct->bytes;
++-		}
++-
+++		mtk_flow_entry_unbind(ppe, entry);
++ 		goto out;
++ 	}
++ 
++@@ -593,9 +606,11 @@
++ 	ret = true;
++ 
++ out:
+++	entry->packets = entry->prev_packets;
+++	entry->bytes = entry->prev_bytes;
++ 	if (acct) {
++-		*packets += acct->packets;
++-		*bytes += acct->bytes;
+++		entry->packets += acct->packets;
+++		entry->bytes += acct->bytes;
++ 	}
++ 
++ 	return ret;
++@@ -605,20 +620,21 @@
++ mtk_flow_entry_update_l2(struct mtk_ppe *ppe, struct mtk_flow_entry *entry)
++ {
++ 	u32 ib1_ts_mask = mtk_get_ib1_ts_mask(ppe->eth);
++-	u64 *packets = &entry->packets;
++-	u64 *bytes = &entry->bytes;
++ 	struct mtk_flow_entry *cur;
++ 	struct hlist_node *tmp;
++ 	int idle;
++ 
+++	entry->packets = entry->prev_packets;
+++	entry->bytes = entry->prev_bytes;
++ 	idle = __mtk_foe_entry_idle_time(ppe, entry->data.ib1);
++ 	hlist_for_each_entry_safe(cur, tmp, &entry->l2_flows, l2_list) {
+++		bool active = mtk_flow_entry_update(ppe, cur);
++ 		int cur_idle;
++ 
++-		if (!mtk_flow_entry_update(ppe, cur, packets, bytes)) {
++-			entry->prev_packets += cur->prev_packets;
++-			entry->prev_bytes += cur->prev_bytes;
++-			__mtk_foe_entry_clear(ppe, entry, false);
+++		entry->packets += cur->packets;
+++		entry->bytes += cur->bytes;
+++		if (!active) {
+++			__mtk_foe_entry_clear(ppe, cur, false);
++ 			continue;
++ 		}
++ 
++@@ -635,15 +651,12 @@
++ void mtk_foe_entry_get_stats(struct mtk_ppe *ppe, struct mtk_flow_entry *entry,
++ 			     int *idle)
++ {
++-	entry->packets = entry->prev_packets;
++-	entry->bytes = entry->prev_bytes;
++-
++ 	spin_lock_bh(&ppe_lock);
++ 
++ 	if (entry->type == MTK_FLOW_TYPE_L2)
++ 		mtk_flow_entry_update_l2(ppe, entry);
++ 	else
++-		mtk_flow_entry_update(ppe, entry, &entry->packets, &entry->bytes);
+++		mtk_flow_entry_update(ppe, entry);
++ 
++ 	*idle = __mtk_foe_entry_idle_time(ppe, entry->data.ib1);
++ 
++@@ -670,6 +683,12 @@
++ 					 timestamp);
++ 	}
++ 
+++	acct = mtk_ppe_mib_entry_read(ppe, hash);
+++	if (acct) {
+++		acct->packets = 0;
+++		acct->bytes = 0;
+++	}
+++
++ 	hwe = mtk_foe_get_entry(ppe, hash);
++ 	memcpy(&hwe->data, &entry->data, eth->soc->foe_entry_size - sizeof(hwe->ib1));
++ 	wmb();
++@@ -685,12 +704,6 @@
++ 
++ 	dma_wmb();
++ 
++-	acct = mtk_ppe_mib_entry_read(ppe, hash);
++-	if (acct) {
++-		acct->packets = 0;
++-		acct->bytes = 0;
++-	}
++-
++ 	mtk_ppe_cache_clear(ppe);
++ }
++ 
++@@ -755,6 +768,7 @@
++ 		return;
++ 
++ 	flow_info->type = MTK_FLOW_TYPE_L2_SUBFLOW;
+++	flow_info->l2_parent = entry;
++ 	flow_info->hash = hash;
++ 	hlist_add_head(&flow_info->list,
++ 		       &ppe->foe_flow[hash / soc->hash_offset]);
++@@ -785,12 +799,11 @@
++ 	const struct mtk_soc_data *soc = ppe->eth->soc;
++ 	struct hlist_head *head = &ppe->foe_flow[hash / soc->hash_offset];
++ 	struct mtk_foe_entry *hwe = mtk_foe_get_entry(ppe, hash);
++-	struct mtk_flow_entry *entry;
+++	struct mtk_flow_entry *entry, *found = NULL;
++ 	struct mtk_foe_bridge key = {};
++ 	struct mtk_foe_entry foe = {};
++ 	struct hlist_node *n;
++ 	struct ethhdr *eh;
++-	bool found = false;
++ 	int entry_len;
++ 	u8 *tag;
++ 
++@@ -805,18 +818,21 @@
++ 	hlist_for_each_entry_safe(entry, n, head, list) {
++ 		if (found ||
++ 		    !mtk_flow_entry_match(ppe->eth, entry, &foe, entry_len)) {
++-			if (entry->hash != 0xffff)
+++			if (entry->hash == hash)
++ 				__mtk_foe_entry_clear(ppe, entry, false);
++ 			continue;
++ 		}
++ 
++-		entry->hash = hash;
++-		__mtk_foe_entry_commit(ppe, &entry->data, hash);
++-		found = true;
++-	}
++-
++-	if (found)
+++		mtk_flow_entry_unbind(ppe, entry);
+++		found = entry;
+++	}
+++
+++	if (found) {
+++		/* Retire every old owner before resetting this slot's counters. */
+++		found->hash = hash;
+++		__mtk_foe_entry_commit(ppe, &found->data, hash);
++ 		goto out;
+++	}
++ 
++ 	eh = eth_hdr(skb);
++ 	ether_addr_copy(key.dest_mac, eh->h_dest);
++--- a/drivers/net/ethernet/mediatek/mtk_ppe.h
+++++ b/drivers/net/ethernet/mediatek/mtk_ppe.h
++@@ -302,8 +302,12 @@
++ 	u8 ppe_index;
++ 	u16 hash;
++ 	struct mtk_foe_entry data;
++-	struct rhash_head node;
+++	union {
+++		struct rhash_head node;
+++		struct mtk_flow_entry *l2_parent;
+++	};
++ 	unsigned long cookie;
+++	/* Retired bindings; packets/bytes remain the last reported totals. */
++ 	u64 prev_packets, prev_bytes;
++ 	u64 packets, bytes;
++ };

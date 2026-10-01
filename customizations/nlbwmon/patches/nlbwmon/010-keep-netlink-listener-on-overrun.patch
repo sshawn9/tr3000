@@ -1,0 +1,19 @@
+Subject: [PATCH] nfnetlink: keep receiving events after a socket overrun
+
+Netlink reports a receive queue overrun through EPOLLERR. Without
+ULOOP_ERROR_CB, uloop removes the socket from epoll before handle_event()
+can consume the error. Periodic dumps keep running, but event delivery
+never resumes. Leave the socket registered so subsequent reads can drain
+the queue after nl_recv() consumes the error.
+
+--- a/nfnetlink.c
++++ b/nfnetlink.c
+@@ -395,7 +395,7 @@ nfnetlink_connect(int bufsize)
+ 	ufd.cb = handle_event;
+ 	ufd.fd = nl_socket_get_fd(nl);
+ 
+-	if (uloop_fd_add(&ufd, ULOOP_READ))
++	if (uloop_fd_add(&ufd, ULOOP_READ | ULOOP_ERROR_CB))
+ 		return -errno;
+ 
+ 	return 0;
