@@ -14,6 +14,7 @@
 /bin/sh /etc/scripts/defaults/disable-wan-and-wan6 --defaults || exit 1
 /bin/sh /etc/scripts/defaults/disable-radio0 --defaults || exit 1
 /bin/sh /etc/scripts/defaults/enable-radio1 --defaults || exit 1
+/bin/sh /etc/scripts/defaults/set-hostname --defaults || exit 1
 /bin/sh /etc/scripts/defaults/set-timezone-shanghai --defaults || exit 1
 /bin/sh /etc/scripts/defaults/disable-upgrade-check-and-package-upgrade --defaults || exit 1
 /bin/sh /etc/scripts/defaults/enable-upnp --defaults || exit 1
