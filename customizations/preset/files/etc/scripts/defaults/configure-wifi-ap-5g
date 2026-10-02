@@ -7,6 +7,9 @@ set -e
 
 SSID='tr3000_5G'
 
+uci -q set wireless.radio1.country='CN'
+uci -q set wireless.radio1.htmode='HE160'
+
 uci -q set wireless.default_radio1=wifi-iface
 uci -q set wireless.default_radio1.device='radio1'
 uci -q set wireless.default_radio1.mode='ap'
