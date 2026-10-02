@@ -1,0 +1,28 @@
+auto_sync = true
+update_check = false
+
+search_mode = "fuzzy"
+filter_mode = "global"
+search_mode_shell_up_key_binding = "fuzzy"
+filter_mode_shell_up_key_binding = "global"
+workspaces = true
+
+invert = true
+
+inline_height = 20
+show_preview = true
+
+enter_accept = true
+
+[stats]
+common_prefix = ["sudo"]
+common_subcommands = ["git", "docker", "podman", "systemctl", "gh"]
+
+[sync]
+records = true
+
+[preview]
+strategy = "auto"
+
+[daemon]
+enabled = false

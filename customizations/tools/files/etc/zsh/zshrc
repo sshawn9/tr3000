@@ -21,3 +21,6 @@ zstyle ':completion:*:*:(service|/etc/init.d/*):*:commands' commands \
 
 # Initialize the prompt supplied by the starship package.
 eval "$(starship init zsh)"
+
+# Record command history and bind Ctrl+R and the Up arrow to Atuin search.
+eval "$(atuin init zsh)"
