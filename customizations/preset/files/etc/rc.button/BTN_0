@@ -1,0 +1,3 @@
+#!/bin/sh
+logger -t BTN_0 "ACTION=$ACTION TYPE=$TYPE"
+exit 0
