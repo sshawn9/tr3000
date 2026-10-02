@@ -1,0 +1,12 @@
+{
+  "wireless": {
+    "radio1": {
+      "disabled": "0"
+    },
+    "default_radio1": {
+      "disabled": "0",
+      "encryption": "sae-mixed",
+      "key": ""
+    }
+  }
+}
