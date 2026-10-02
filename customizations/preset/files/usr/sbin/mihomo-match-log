@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Follow new messages only, including successful and failed MATCH connections.
+# Filter inside logread and append directly without per-line shell processing.
+umask 077
+exec logread -f -e '^mihomo\[[0-9][0-9]*\]: .*\( match Match using \|(match Match/)\)' >> /tmp/mihomo-match.log
