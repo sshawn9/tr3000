@@ -2,25 +2,55 @@
 [[ -r /etc/shinit ]] && emulate sh -c 'source /etc/shinit'
 
 bindkey -e
+setopt auto_cd
 
 HISTFILE="${ZDOTDIR:-$HOME}/.zsh_history"
 HISTSIZE=1000
 SAVEHIST=1000
 setopt append_history hist_ignore_dups hist_ignore_space
 
-# Use the completion functions shipped with Zsh.
+# Load built-in and packaged completion functions.
 zmodload zsh/complist
 autoload -Uz compinit
 compinit
-zstyle ':completion:*' menu select
+# fzf-tab supplies the selection menu.
+zstyle ':completion:*' menu no
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+# Order native Git subcommand groups.
+zstyle ':completion:*:git:*' tag-order 'main-porcelain-commands aliases user-commands third-party-commands *'
+zstyle ':completion:*:git:*' group-order main-porcelain-commands aliases user-commands third-party-commands
 
 # OpenWrt defines shared init actions in rc.common, not each service script.
 # Supply the fallback supported by Zsh's existing _init_d completion.
 zstyle ':completion:*:*:(service|/etc/init.d/*):*:commands' commands \
     start stop restart reload status enable disable
 
+# Use fd for file and directory selection; Atuin owns history search.
+export FZF_DEFAULT_COMMAND='fd --type f'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND='fd --type d'
+export FZF_CTRL_R_COMMAND=''
+eval "$(fzf --zsh)"
+
+# Load after fzf's widgets and before autosuggestions wraps them.
+source /usr/share/zsh/plugins/fzf-tab/fzf-tab.zsh
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls -1 --color=always -- "$realpath"'
+zstyle ':fzf-tab:complete:(-command-|-parameter-|-brace-parameter-|export|unset|expand):*' fzf-preview 'echo ${(P)word}'
+
+# Keep cd for directory changes and learn frequently visited paths.
+eval "$(zoxide init zsh --cmd cd)"
+
 # Initialize the prompt supplied by the starship package.
 eval "$(starship init zsh)"
 
 # Record command history and bind Ctrl+R and the Up arrow to Atuin search.
 eval "$(atuin init zsh)"
+
+# Use Atuin's history for inline suggestions, accepted with the Right arrow.
+ZSH_AUTOSUGGEST_STRATEGY=(atuin)
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# Load highlighting after the widgets it observes.
+source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
