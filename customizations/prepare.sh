@@ -2,7 +2,9 @@
 set -euo pipefail
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+shopt -s nullglob
 
-while IFS= read -r -d '' script; do
+for script in */prepare.sh; do
+    [[ -e "${script%/prepare.sh}/.skip" ]] && continue
     bash "$script"
-done < <(find . -mindepth 2 -type f -name prepare.sh -print0)
+done

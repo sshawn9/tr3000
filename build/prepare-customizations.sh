@@ -7,6 +7,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/build.conf"
 apply_source_patches() {
     local patch_file
     for patch_file in "$CUSTOM"/*/tree-patches/*.patch; do
+        [[ -e "${patch_file%/tree-patches/*}/.skip" ]] && continue
         echo "==> Tree patch: $(basename "$patch_file")"
         patch -p1 --batch --fuzz=0 < "$patch_file"
     done
@@ -15,6 +16,7 @@ apply_source_patches() {
 copy_custom_packages() {
     local dir
     for dir in "$CUSTOM"/*/packages/; do
+        [[ -e "${dir%/packages/}/.skip" ]] && continue
         rsync -a "$dir" package/
     done
 }
@@ -24,6 +26,7 @@ copy_package_patches() {
     local -a patch_files matches
 
     for patch_dir in "$CUSTOM"/*/patches/*/; do
+        [[ -e "${patch_dir%/patches/*/}/.skip" ]] && continue
         patch_files=("$patch_dir"*.patch)
         if (( ${#patch_files[@]} == 0 )); then
             continue
@@ -48,12 +51,18 @@ copy_custom_files() {
     rm -rf -- "$TREE/files"
     mkdir -p "$TREE/files"
     for dir in "$CUSTOM"/*/files/; do
+        [[ -e "${dir%/files/}/.skip" ]] && continue
         rsync -a "$dir" "$TREE/files/"
     done
 }
 
 prepare_config() {
-    cat "$CUSTOM"/*/config.fragment > .config
+    local config_file
+    : > .config
+    for config_file in "$CUSTOM"/*/config.fragment; do
+        [[ -e "${config_file%/config.fragment}/.skip" ]] && continue
+        cat "$config_file" >> .config
+    done
 }
 
 prepare_permissions() {
