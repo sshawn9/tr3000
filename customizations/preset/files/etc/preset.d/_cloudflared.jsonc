@@ -1,0 +1,16 @@
+{
+  "cloudflared": {
+    "config": {
+      "enabled": "1",
+      "token": "",
+      "interfaces": [
+        "wan",
+        "wan6",
+        "dial",
+        "wwan2g",
+        "wwan5g",
+        "usbwan"
+      ]
+    }
+  }
+}
