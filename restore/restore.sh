@@ -15,6 +15,10 @@ SNAPSHOT=$(cd -- "$SNAPSHOT" && pwd -P)
 TARGET=${2:-root@10.0.0.1}
 
 setup_ssh_key() {
+    local has_password
+
+    has_password=$(ssh -T -- "$TARGET" "awk -F: '\$1 == \"root\" { print (\$2 != \"\"); found = 1; exit } END { if (!found) exit 1 }' /etc/shadow") || return
+    [[ "$has_password" == 1 ]] || { printf 'Skipping SSH key setup: root password is empty\n' >&2; return 0; }
     ssh-copy-id -- "$TARGET"
 }
 
@@ -33,14 +37,15 @@ restore_root_password() {
     local entry
 
     entry=$(awk -F: '$1 == "root" { print $1 ":" $2; found = 1; exit } END { if (!found) exit 1 }' "$SNAPSHOT/etc/shadow")
+    [[ -n "${entry#*:}" ]] || { printf 'Skipping empty root password\n' >&2; return 0; }
     printf '%s\n' "$entry" | ssh -T -- "$TARGET" 'chpasswd -e'
 }
 
 main() {
-    setup_ssh_key
     restore_preset
     restore_mihomo
     restore_root_password
+    setup_ssh_key
     printf 'Restore completed: %s -> %s\n' "$SNAPSHOT" "$TARGET"
 }
 
