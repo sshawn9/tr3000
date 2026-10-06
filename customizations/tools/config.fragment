@@ -2,15 +2,7 @@
 # selected here so they can be added or dropped independently.
 
 # Shell & editing
-CONFIG_PACKAGE_bash=y
-CONFIG_PACKAGE_zsh=y
-CONFIG_PACKAGE_zsh-autosuggestions=y
-CONFIG_PACKAGE_zsh-syntax-highlighting=y
-CONFIG_PACKAGE_zsh-completions=y
-CONFIG_PACKAGE_fzf=y
-CONFIG_PACKAGE_fzf-tab=y
-CONFIG_PACKAGE_fd=y
-CONFIG_PACKAGE_zoxide=y
+CONFIG_PACKAGE_bash=n
 CONFIG_PACKAGE_cli=y
 CONFIG_PACKAGE_nano=y
 CONFIG_PACKAGE_tmux=y
